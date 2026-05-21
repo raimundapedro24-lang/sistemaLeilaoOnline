@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<h1>Criar Leilão</h1>
+
+<form method="POST">
+
+<input
+name="titulo"
+placeholder="Título"
+required>
+
+<textarea
+name="descricao">
+
+</textarea>
+
+<input
+type="number"
+step="0.01"
+name="preco"
+placeholder="Preço inicial">
+
+<input
+type="date"
+name="data">
+
+<button>
+
+Criar
+
+</button>
+
+</form>
+
+{% endblock %}

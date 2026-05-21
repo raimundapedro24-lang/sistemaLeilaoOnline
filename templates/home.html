@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<h2 class="mb-4">
+
+Leilões em destaque
+
+</h2>
+
+<div class="row">
+
+{% for leilao in leiloes %}
+
+<div class="col-md-4">
+
+<div class="card shadow mb-4">
+
+<img
+src="https://picsum.photos/500/250"
+class="card-img-top">
+
+<div class="card-body">
+
+<span class="badge bg-success">
+
+ABERTO PARA LANCES
+
+</span>
+
+<h5 class="mt-3">
+
+{{leilao.titulo}}
+
+</h5>
+
+<p>
+
+{{leilao.descricao}}
+
+</p>
+
+<h4>
+
+R$ {{leilao.lance_atual}}
+
+</h4>
+
+<form
+action="/lance/{{leilao.id}}"
+method="POST">
+
+<input
+type="number"
+step="0.01"
+name="valor"
+class="form-control mb-2"
+placeholder="Seu lance">
+
+<button
+class="btn btn-primary w-100">
+
+Dar Lance
+
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<h1>Usuários</h1>
+
+{% for usuario in usuarios %}
+
+<p>
+
+{{usuario.username}}
+
+-
+{{usuario.role}}
+
+</p>
+
+{% endfor %}
+
+{% endblock %}
