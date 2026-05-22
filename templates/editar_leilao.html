@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="container">
+
+<div class="card shadow p-4">
+
+<h1 class="mb-4">
+
+Editar Leilão
+
+</h1>
+
+<form
+method="POST"
+enctype="multipart/form-data">
+
+
+<img
+src="{{ url_for(
+'static',
+filename='uploads/' + (leilao.imagem or 'sem-imagem.jpg')
+)}}"
+
+class="img-fluid rounded mb-4"
+
+style="
+height:300px;
+width:100%;
+object-fit:cover;
+">
+
+
+<label class="form-label">
+
+Título
+
+</label>
+
+<input
+name="titulo"
+value="{{leilao.titulo}}"
+class="form-control mb-3">
+
+
+
+<label class="form-label">
+
+Descrição
+
+</label>
+
+<textarea
+name="descricao"
+class="form-control mb-3">
+
+{{leilao.descricao}}
+
+</textarea>
+
+
+
+<label class="form-label">
+
+Preço inicial
+
+</label>
+
+<input
+type="number"
+step="0.01"
+name="preco"
+value="{{leilao.preco_inicial}}"
+class="form-control mb-3">
+
+
+
+<label class="form-label">
+
+Data Final
+
+</label>
+
+<input
+type="date"
+name="data"
+value="{{leilao.data_fim.strftime('%Y-%m-%d')}}"
+class="form-control mb-3">
+
+
+
+<label class="form-label">
+
+Nova imagem
+
+</label>
+
+<input
+type="file"
+name="imagem"
+class="form-control mb-4">
+
+
+<button
+class="btn btn-success">
+
+Salvar alterações
+
+</button>
+
+<a
+href="/"
+class="btn btn-secondary">
+
+Cancelar
+
+</a>
+
+</form>
+
+</div>
+
+</div>
+
+{% endblock %}

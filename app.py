@@ -1,7 +1,17 @@
 import os
 from datetime import datetime
+from functools import wraps
 
-from flask import Flask, render_template, redirect, url_for, request, flash, abort
+from flask import (
+    Flask,
+    render_template,
+    redirect,
+    url_for,
+    request,
+    flash,
+    abort
+)
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
     LoginManager,
@@ -11,16 +21,25 @@ from flask_login import (
     logout_user,
     current_user
 )
-from flask_migrate import Migrate
-from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
 
+from flask_migrate import Migrate
+
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
+
+from werkzeug.utils import secure_filename
 
 # =========================
 # CONFIGURAÇÃO
 # =========================
 
 app = Flask(__name__)
+
+UPLOAD_FOLDER = 'static/uploads'
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 app.config['SECRET_KEY'] = 'chave-super-secreta'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -50,6 +69,15 @@ def role_required(roles):
         return decorated_function
     return decorator
 
+def pode_editar_leilao(leilao):
+
+    if current_user.role == 'Admin':
+        return True
+
+    if current_user.id == leilao.criador_id:
+        return True
+
+    return False
 
 # =========================
 # MODELOS
@@ -102,6 +130,11 @@ class Leilao(db.Model):
 
     lance_atual = db.Column(
         db.Float
+    )
+
+    imagem = db.Column(
+        db.String(200),
+        default='sem-imagem.jpg'
     )
 
     data_fim = db.Column(
@@ -258,6 +291,54 @@ def logout():
     )
 
 
+
+# =========================
+# DAR LANCE
+# =========================
+
+@app.route('/lance/<int:id>', methods=['POST'])
+@login_required
+def dar_lance(id):
+
+    leilao = Leilao.query.get_or_404(id)
+
+    valor_texto = request.form.get('valor', '').strip()
+
+    # campo vazio
+    if not valor_texto:
+        flash("Digite um valor para o lance.")
+        return redirect(url_for('home'))
+
+    try:
+        valor = float(valor_texto)
+
+    except ValueError:
+
+        flash("Digite um valor válido.")
+        return redirect(url_for('home'))
+
+    if valor <= leilao.lance_atual:
+
+        flash(
+            "O lance precisa ser maior que o atual."
+        )
+
+        return redirect(
+            url_for('home')
+        )
+
+    leilao.lance_atual = valor
+
+    db.session.commit()
+
+    flash(
+        "Lance realizado com sucesso!"
+    )
+
+    return redirect(
+        url_for('home')
+    )
+    
 # =========================
 # CRIAR LEILÃO
 # =========================
@@ -271,23 +352,95 @@ def criar_leilao():
 
     if request.method == 'POST':
 
-        preco = float(
-            request.form['preco']
+        arquivo = request.files.get(
+            'imagem'
         )
 
-        leilao = Leilao(
-            titulo=request.form['titulo'],
-            descricao=request.form['descricao'],
-            preco_inicial=preco,
-            lance_atual=preco,
-            data_fim=datetime.strptime(
-                request.form['data'],
+        nome_arquivo = "sem-imagem.jpg"
+
+        if arquivo and arquivo.filename:
+
+            nome_arquivo = secure_filename(
+                arquivo.filename
+            )
+
+            caminho = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                nome_arquivo
+            )
+
+            arquivo.save(caminho)
+
+        try:
+
+            preco = float(
+                request.form['preco']
+            )
+
+        except ValueError:
+
+            flash(
+                "Preço inválido."
+            )
+
+            return redirect(
+                url_for(
+                    'criar_leilao'
+                )
+            )
+
+        # valida data
+        data_texto = request.form[
+            'data'
+        ].strip()
+
+        try:
+
+            if len(data_texto) != 10:
+
+                raise ValueError
+
+            data_final = datetime.strptime(
+                data_texto,
                 "%Y-%m-%d"
-            ),
+            )
+
+        except ValueError:
+
+            flash(
+                "Data inválida."
+            )
+
+            return redirect(
+                url_for(
+                    'criar_leilao'
+                )
+            )
+
+        novo = Leilao(
+
+            titulo=request.form[
+                'titulo'
+            ],
+
+            descricao=request.form[
+                'descricao'
+            ],
+
+            preco_inicial=preco,
+
+            lance_atual=preco,
+
+            imagem=nome_arquivo,
+
+            data_fim=data_final,
+
             criador_id=current_user.id
         )
 
-        db.session.add(leilao)
+        db.session.add(
+            novo
+        )
 
         db.session.commit()
 
@@ -296,64 +449,44 @@ def criar_leilao():
         )
 
         return redirect(
-            url_for('home')
+            url_for(
+                'home'
+            )
         )
 
     return render_template(
         'criar_leilao.html'
     )
-
-
 # =========================
-# DAR LANCE
+# DELETAR LEILÃO
 # =========================
 
 @app.route(
-    '/lance/<int:id>',
-    methods=['POST']
+    '/deletar_leilao/<int:id>'
 )
 @login_required
-def dar_lance(id):
+def deletar_leilao(id):
 
     leilao = Leilao.query.get_or_404(id)
 
-    valor = float(
-        request.form['valor']
-    )
+    if not pode_editar_leilao(leilao):
 
-    if valor <= leilao.lance_atual:
+        abort(403)
 
-        flash(
-            "Lance precisa ser maior"
-        )
-
-        return redirect(
-            url_for('home')
-        )
-
-    novo_lance = Lance(
-        valor=valor,
-        usuario_id=current_user.id,
-        leilao_id=id
-    )
-
-    leilao.lance_atual = valor
-
-    db.session.add(
-        novo_lance
+    db.session.delete(
+        leilao
     )
 
     db.session.commit()
 
     flash(
-        "Lance realizado!"
+        "Leilão excluído!"
     )
 
     return redirect(
         url_for('home')
     )
-
-
+    
 # =========================
 # PAINEL ADMIN
 # =========================
