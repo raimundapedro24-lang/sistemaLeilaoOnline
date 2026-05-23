@@ -84,6 +84,11 @@ def pode_editar_leilao(leilao):
 # =========================
 
 class User(UserMixin, db.Model):
+    
+    foto = db.Column(
+    db.String(200),
+    default='padrao.png'
+)
 
     id = db.Column(
         db.Integer,
@@ -105,6 +110,13 @@ class User(UserMixin, db.Model):
         db.String(20),
         default='Usuario'
     )
+    
+    banido = db.Column(
+    db.Boolean,
+    default=False
+)
+    
+
 
 
 class Leilao(db.Model):
@@ -145,6 +157,20 @@ class Leilao(db.Model):
         db.Integer,
         db.ForeignKey('user.id')
     )
+    
+    categoria = db.Column(
+    db.String(50)
+)
+
+encerrado = db.Column(
+    db.Boolean,
+    default=False
+)
+
+vencedor_id = db.Column(
+    db.Integer,
+    db.ForeignKey('user.id')
+)
 
 
 class Lance(db.Model):
@@ -159,9 +185,34 @@ class Lance(db.Model):
         nullable=False
     )
 
-    horario = db.Column(
+    data = db.Column(
         db.DateTime,
-        default=datetime.now
+        default=datetime.utcnow
+    )
+
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id')
+    )
+
+    leilao_id = db.Column(
+        db.Integer,
+        db.ForeignKey('leilao.id')
+    
+    )
+    
+# =========================
+# MODELOS NOVOS
+# =========================
+
+
+
+
+class Favorito(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
     )
 
     usuario_id = db.Column(
@@ -173,8 +224,7 @@ class Lance(db.Model):
         db.Integer,
         db.ForeignKey('leilao.id')
     )
-
-
+    
 # =========================
 # LOGIN
 # =========================
@@ -182,6 +232,7 @@ class Lance(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 
 
 # =========================
@@ -192,19 +243,33 @@ def load_user(user_id):
 @login_required
 def home():
 
-    leiloes = Leilao.query.all()
+    categoria = request.args.get(
+        'categoria'
+    )
+
+    if categoria:
+
+        leiloes = Leilao.query.filter_by(
+            categoria=categoria
+        ).all()
+
+    else:
+
+        leiloes = Leilao.query.all()
 
     return render_template(
         'home.html',
         leiloes=leiloes
     )
 
-
 # =========================
 # LOGIN
 # =========================
 
-@app.route('/login', methods=['GET','POST'])
+@app.route(
+    '/login',
+    methods=['GET','POST']
+)
 def login():
 
     if request.method == 'POST':
@@ -213,26 +278,51 @@ def login():
             username=request.form['username']
         ).first()
 
-        if user and check_password_hash(
+        if not user:
+
+            flash(
+                "Usuário não encontrado"
+            )
+
+            return redirect(
+                url_for('login')
+            )
+
+        # bloqueia usuário banido
+        if user.banido:
+
+            flash(
+                "Sua conta foi banida."
+            )
+
+            return redirect(
+                url_for('login')
+            )
+
+        # verifica senha
+        if check_password_hash(
             user.password,
             request.form['password']
         ):
 
             login_user(user)
 
-            flash("Login realizado!")
+            flash(
+                "Login realizado!"
+            )
 
             return redirect(
                 url_for('home')
             )
 
-        flash("Usuário ou senha inválidos")
+        flash(
+            "Senha incorreta"
+        )
 
     return render_template(
         'login.html'
     )
-
-
+    
 # =========================
 # CADASTRO
 # =========================
@@ -435,7 +525,9 @@ def criar_leilao():
 
             data_fim=data_final,
 
-            criador_id=current_user.id
+            criador_id=current_user.id,
+            
+            categoria=request.form['categoria'],
         )
 
         db.session.add(
@@ -457,6 +549,118 @@ def criar_leilao():
     return render_template(
         'criar_leilao.html'
     )
+    
+    # =========================
+# EDITAR LEILÃO
+# =========================
+
+@app.route(
+    '/editar_leilao/<int:id>',
+    methods=['GET','POST']
+)
+@login_required
+def editar_leilao(id):
+
+    leilao = Leilao.query.get_or_404(id)
+
+    if not pode_editar_leilao(leilao):
+        abort(403)
+
+    if request.method == 'POST':
+
+        leilao.titulo = request.form['titulo']
+
+        leilao.descricao = request.form['descricao']
+        
+        leilao.categoria = request.form['categoria']
+
+        # valida preço
+        try:
+
+            leilao.preco_inicial = float(
+                request.form['preco']
+            )
+
+        except ValueError:
+
+            flash(
+                "Preço inválido."
+            )
+
+            return redirect(
+                url_for(
+                    'editar_leilao',
+                    id=id
+                )
+            )
+
+        # imagem opcional
+        arquivo = request.files.get(
+            'imagem'
+        )
+
+        if arquivo and arquivo.filename:
+
+            nome = secure_filename(
+                arquivo.filename
+            )
+
+            caminho = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                nome
+            )
+
+            arquivo.save(
+                caminho
+            )
+
+            leilao.imagem = nome
+
+        # valida data
+        data_texto = request.form[
+            'data'
+        ].strip()
+
+        try:
+
+            if len(data_texto) != 10:
+                raise ValueError
+
+            leilao.data_fim = datetime.strptime(
+                data_texto,
+                "%Y-%m-%d"
+            )
+
+        except ValueError:
+
+            flash(
+                "Data inválida."
+            )
+
+            return redirect(
+                url_for(
+                    'editar_leilao',
+                    id=id
+                )
+            )
+
+        db.session.commit()
+
+        flash(
+            "Leilão atualizado!"
+        )
+
+        return redirect(
+            url_for(
+                'home'
+            )
+        )
+
+    return render_template(
+        'editar_leilao.html',
+        leilao=leilao
+    )
+    
 # =========================
 # DELETAR LEILÃO
 # =========================
@@ -504,6 +708,70 @@ def usuarios():
     )
 
 
+
+# =========================
+# MINHA CONTA
+# =========================
+
+@app.route('/minha_conta')
+@login_required
+def minha_conta():
+
+    usuarios = None
+
+    # só admin vê lista
+    if current_user.role == 'Admin':
+        usuarios = User.query.all()
+
+    return render_template(
+        'minha_conta.html',
+        usuarios=usuarios
+    )
+    
+    
+# =========================
+# ADMIN
+# =========================
+
+@app.route('/promover/<int:id>')
+@login_required
+@role_required(['Admin'])
+def promover(id):
+
+    user = User.query.get_or_404(id)
+
+    user.role='Admin'
+
+    db.session.commit()
+
+    flash("Usuário promovido.")
+
+    return redirect(
+        url_for(
+            'minha_conta'
+        )
+    )
+
+
+@app.route('/banir/<int:id>')
+@login_required
+@role_required(['Admin'])
+def banir(id):
+
+    user = User.query.get_or_404(id)
+
+    user.banido=True
+
+    db.session.commit()
+
+    flash("Usuário banido.")
+
+    return redirect(
+        url_for(
+            'minha_conta'
+        )
+    )
+    
 # =========================
 # INICIALIZAÇÃO
 # =========================

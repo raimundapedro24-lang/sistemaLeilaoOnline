@@ -24,7 +24,6 @@ filename='uploads/' + (leilao.imagem or 'sem-imagem.jpg')
 
 class="card-img-top">
 
-
 <div class="card-body">
 
 <span class="badge bg-success">
@@ -39,6 +38,12 @@ ABERTO PARA LANCES
 
 </h5>
 
+<span class="badge bg-secondary mb-2">
+
+{{leilao.categoria}}
+
+</span>
+
 <p>
 
 {{leilao.descricao}}
@@ -50,7 +55,6 @@ ABERTO PARA LANCES
 R$ {{leilao.lance_atual}}
 
 </h4>
-
 
 <form
 action="/lance/{{leilao.id}}"
@@ -74,7 +78,6 @@ Dar Lance
 
 </form>
 
-
 {% if current_user.is_authenticated %}
 
 {% if current_user.role=="Admin" or current_user.id==leilao.criador_id %}
@@ -89,7 +92,6 @@ Editar
 
 </a>
 
-
 <a
 href="/deletar_leilao/{{leilao.id}}"
 class="btn btn-danger w-50">
@@ -102,7 +104,6 @@ Excluir
 
 {% endif %}
 {% endif %}
-
 
 </div>
 

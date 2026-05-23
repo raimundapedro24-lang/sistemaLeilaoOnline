@@ -101,6 +101,66 @@ type="file"
 name="imagem"
 class="form-control mb-4">
 
+ <div class="mb-3">
+
+<label>Categoria</label>
+
+<select
+name="categoria"
+class="form-select"
+required>
+
+<option value="Automóveis"
+{% if leilao.categoria=="Automóveis" %}
+selected
+{% endif %}
+>
+Automóveis
+</option>
+
+<option value="Imóveis"
+{% if leilao.categoria=="Imóveis" %}
+selected
+{% endif %}
+>
+Imóveis
+</option>
+
+<option value="Máquinas"
+{% if leilao.categoria=="Máquinas" %}
+selected
+{% endif %}
+>
+Máquinas
+</option>
+
+<option value="Tecnologia"
+{% if leilao.categoria=="Tecnologia" %}
+selected
+{% endif %}
+>
+Tecnologia
+</option>
+
+<option value="Eletrônicos"
+{% if leilao.categoria=="Eletrônicos" %}
+selected
+{% endif %}
+>
+Eletrônicos
+</option>
+
+<option value="Outros"
+{% if leilao.categoria=="Outros" %}
+selected
+{% endif %}
+>
+Outros
+</option>
+
+</select>
+
+</div>
 
 <button
 class="btn btn-success">

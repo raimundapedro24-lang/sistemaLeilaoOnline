@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="card shadow p-4">
+
+<h2>
+
+Painel Admin
+
+</h2>
+
+<table class="table">
+
+<tr>
+
+<th>ID</th>
+<th>Usuário</th>
+<th>Cargo</th>
+<th>Status</th>
+<th>Ações</th>
+
+</tr>
+
+{% for u in usuarios %}
+
+<tr>
+
+<td>
+
+{{u.id}}
+
+</td>
+
+<td>
+
+{{u.username}}
+
+</td>
+
+<td>
+
+{{u.role}}
+
+</td>
+
+<td>
+
+{% if u.banido %}
+
+Banido
+
+{% else %}
+
+Ativo
+
+{% endif %}
+
+</td>
+
+<td>
+
+<a
+href="/promover/{{u.id}}"
+class="btn btn-warning">
+
+Admin
+
+</a>
+
+<a
+href="/banir/{{u.id}}"
+class="btn btn-danger">
+
+Banir
+
+</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+{% endblock %}
