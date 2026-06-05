@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
@@ -37,12 +37,16 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'static/uploads'
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-app.config['SECRET_KEY'] = 'chave-super-secreta'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chave-super-secreta')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'DATABASE_URL',
+    'sqlite:///' + os.path.join(BASE_DIR, 'instance', 'database.db')
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -50,6 +54,8 @@ migrate = Migrate(app, db)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+MAX_DURACAO_LEILAO = timedelta(days=365)
 
 
 # =========================
@@ -60,6 +66,9 @@ def role_required(roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
 
             if current_user.role not in roles:
                 abort(403)
@@ -78,6 +87,76 @@ def pode_editar_leilao(leilao):
         return True
 
     return False
+
+
+def validar_data_hora_encerramento(valor):
+    valor = (valor or '').strip()
+
+    if not valor:
+        return None, "Informe a data e o horário de encerramento do leilão."
+
+    try:
+        data_fim = datetime.strptime(valor, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None, "Data ou horário inválido. Use uma data e horário existentes no formato correto."
+
+    agora = datetime.now()
+    limite_maximo = agora + MAX_DURACAO_LEILAO
+
+    if data_fim <= agora:
+        return None, "A data e o horário de encerramento devem ser posteriores ao momento atual."
+
+    if data_fim > limite_maximo:
+        return None, "A data de encerramento não pode ser superior a 1 ano a partir de agora."
+
+    return data_fim, None
+
+
+def finalizar_leilao(leilao):
+    if leilao.encerrado:
+        return
+
+    leilao.encerrado = True
+
+    maior_lance = Lance.query.filter_by(
+        leilao_id=leilao.id
+    ).order_by(
+        Lance.valor.desc()
+    ).first()
+
+    if maior_lance:
+        leilao.vencedor_id = maior_lance.usuario_id
+        leilao.valor_final = maior_lance.valor
+    else:
+        leilao.vencedor_id = None
+        leilao.valor_final = None
+
+
+def finalizar_leiloes_expirados():
+    leiloes = Leilao.query.filter(
+        Leilao.encerrado.is_(False),
+        Leilao.data_fim.isnot(None),
+        Leilao.data_fim <= datetime.now()
+    ).all()
+
+    for leilao in leiloes:
+        finalizar_leilao(leilao)
+
+    if leiloes:
+        db.session.commit()
+
+
+def usuario_pode_ver_contatos(leilao):
+    if not leilao.encerrado:
+        return False
+
+    return (
+        current_user.is_authenticated
+        and (
+            current_user.id == leilao.criador_id
+            or current_user.id == leilao.vencedor_id
+        )
+    )
 
 # =========================
 # MODELOS
@@ -109,6 +188,26 @@ class User(UserMixin, db.Model):
     role = db.Column(
         db.String(20),
         default='Usuario'
+    )
+
+    nome_completo = db.Column(
+        db.String(120)
+    )
+
+    telefone = db.Column(
+        db.String(30)
+    )
+
+    email = db.Column(
+        db.String(120)
+    )
+
+    cidade = db.Column(
+        db.String(80)
+    )
+
+    estado = db.Column(
+        db.String(2)
     )
     
     banido = db.Column(
@@ -170,16 +269,18 @@ class Leilao(db.Model):
         db.ForeignKey('user.id')
     )
 
-    # NOVOS CAMPOS
-
-    encerrado = db.Column(
-        db.Boolean,
-        default=False
+    valor_final = db.Column(
+        db.Float
     )
 
-    vencedor_id = db.Column(
-        db.Integer,
-        db.ForeignKey('user.id')
+    criador = db.relationship(
+        'User',
+        foreign_keys=[criador_id]
+    )
+
+    vencedor = db.relationship(
+        'User',
+        foreign_keys=[vencedor_id]
     )
     
 class Lance(db.Model):
@@ -254,32 +355,7 @@ def load_user(user_id):
 @app.route('/')
 @login_required
 def home():
-
-    # verifica se algum leilão venceu
-    for leilao in Leilao.query.all():
-
-        if (
-            not leilao.encerrado
-            and datetime.now() > leilao.data_fim
-        ):
-
-            leilao.encerrado = True
-
-            # procura o maior lance
-            ultimo_lance = Lance.query.filter_by(
-                leilao_id=leilao.id
-            ).order_by(
-                Lance.valor.desc()
-            ).first()
-
-            # define o vencedor
-            if ultimo_lance:
-
-                leilao.vencedor_id = (
-                    ultimo_lance.usuario_id
-                )
-
-    db.session.commit()
+    finalizar_leiloes_expirados()
 
     categoria = request.args.get(
         'categoria'
@@ -387,7 +463,12 @@ def cadastro():
             password=generate_password_hash(
                 request.form['password']
             ),
-            role='Usuario'
+            role='Usuario',
+            nome_completo=request.form.get('nome_completo'),
+            telefone=request.form.get('telefone'),
+            email=request.form.get('email'),
+            cidade=request.form.get('cidade'),
+            estado=request.form.get('estado')
         )
 
         db.session.add(novo)
@@ -428,7 +509,19 @@ def logout():
 @login_required
 def dar_lance(id):
 
+    finalizar_leiloes_expirados()
+
     leilao = Leilao.query.get_or_404(id)
+
+    if leilao.encerrado or (leilao.data_fim and datetime.now() > leilao.data_fim):
+        finalizar_leilao(leilao)
+        db.session.commit()
+        flash("Leilão Encerrado.")
+        return redirect(url_for('ver_leilao', id=leilao.id))
+
+    if current_user.id == leilao.criador_id:
+        flash("O proprietário não pode participar do próprio leilão.")
+        return redirect(url_for('ver_leilao', id=leilao.id))
 
     valor_texto = request.form.get('valor', '').strip()
 
@@ -444,7 +537,9 @@ def dar_lance(id):
         flash("Digite um valor válido.")
         return redirect(url_for('home'))
 
-    if valor <= leilao.lance_atual:
+    lance_atual = leilao.lance_atual or leilao.preco_inicial
+
+    if valor <= lance_atual:
 
         flash(
             "O lance precisa ser maior que o atual."
@@ -504,6 +599,7 @@ def criar_leilao():
                 nome_arquivo
             )
 
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             arquivo.save(caminho)
 
         try:
@@ -524,26 +620,13 @@ def criar_leilao():
                 )
             )
 
-        # valida data
-        data_texto = request.form[
-            'data'
-        ].strip()
+        data_final, erro_data = validar_data_hora_encerramento(
+            request.form.get('data')
+        )
 
-        try:
-
-            if len(data_texto) != 10:
-
-                raise ValueError
-
-            data_final = datetime.strptime(
-                data_texto,
-                "%Y-%m-%d"
-            )
-
-        except ValueError:
-
+        if erro_data:
             flash(
-                "Data inválida."
+                erro_data
             )
 
             return redirect(
@@ -655,31 +738,20 @@ def editar_leilao(id):
                 nome
             )
 
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             arquivo.save(
                 caminho
             )
 
             leilao.imagem = nome
 
-        # valida data
-        data_texto = request.form[
-            'data'
-        ].strip()
+        data_final, erro_data = validar_data_hora_encerramento(
+            request.form.get('data')
+        )
 
-        try:
-
-            if len(data_texto) != 10:
-                raise ValueError
-
-            leilao.data_fim = datetime.strptime(
-                data_texto,
-                "%Y-%m-%d"
-            )
-
-        except ValueError:
-
+        if erro_data:
             flash(
-                "Data inválida."
+                erro_data
             )
 
             return redirect(
@@ -688,6 +760,9 @@ def editar_leilao(id):
                     id=id
                 )
             )
+
+        leilao.data_fim = data_final
+        leilao.encerrado = False
 
         db.session.commit()
 
@@ -714,6 +789,7 @@ def editar_leilao(id):
 @app.route('/leilao/<int:id>')
 @login_required
 def ver_leilao(id):
+    finalizar_leiloes_expirados()
 
     leilao = Leilao.query.get_or_404(id)
 
@@ -735,7 +811,34 @@ def ver_leilao(id):
         'leilao.html',
         leilao=leilao,
         lances=lances,
-        vencedor=vencedor
+        vencedor=vencedor,
+        pode_ver_contatos=usuario_pode_ver_contatos(leilao)
+    )
+
+
+@app.route('/meus_leiloes')
+@login_required
+def meus_leiloes():
+    finalizar_leiloes_expirados()
+
+    leiloes_abertos = Leilao.query.filter_by(
+        criador_id=current_user.id,
+        encerrado=False
+    ).order_by(
+        Leilao.data_fim.asc()
+    ).all()
+
+    leiloes_encerrados = Leilao.query.filter_by(
+        criador_id=current_user.id,
+        encerrado=True
+    ).order_by(
+        Leilao.data_fim.desc()
+    ).all()
+
+    return render_template(
+        'meus_leiloes.html',
+        leiloes_abertos=leiloes_abertos,
+        leiloes_encerrados=leiloes_encerrados
     )
     
     
@@ -754,6 +857,9 @@ def deletar_leilao(id):
     if not pode_editar_leilao(leilao):
 
         abort(403)
+
+    Lance.query.filter_by(leilao_id=leilao.id).delete()
+    Favorito.query.filter_by(leilao_id=leilao.id).delete()
 
     db.session.delete(
         leilao

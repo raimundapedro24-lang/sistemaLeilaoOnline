@@ -2,28 +2,84 @@
 
 {% block conteudo %}
 
+<div class="row justify-content-center">
+
+<div class="col-md-7">
+
+<div class="card shadow p-4">
+
 <h1>Criar Conta</h1>
 
 <form method="POST">
 
 <input
 type="text"
+name="nome_completo"
+class="form-control mb-3"
+placeholder="Nome completo"
+required>
+
+<input
+type="text"
 name="username"
+class="form-control mb-3"
 placeholder="Usuário"
 required>
 
 <input
+type="email"
+name="email"
+class="form-control mb-3"
+placeholder="E-mail"
+required>
+
+<input
+type="tel"
+name="telefone"
+class="form-control mb-3"
+placeholder="Telefone"
+required>
+
+<div class="row">
+
+<div class="col-md-8">
+<input
+type="text"
+name="cidade"
+class="form-control mb-3"
+placeholder="Cidade"
+required>
+</div>
+
+<div class="col-md-4">
+<input
+type="text"
+name="estado"
+class="form-control mb-3"
+placeholder="Estado"
+maxlength="2"
+required>
+</div>
+
+</div>
+
+<input
 type="password"
 name="password"
+class="form-control mb-3"
 placeholder="Senha"
 required>
 
-<button>
-
+<button class="btn btn-primary w-100">
 Cadastrar
-
 </button>
 
 </form>
+
+</div>
+
+</div>
+
+</div>
 
 {% endblock %}
