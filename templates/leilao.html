@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="container">
+
+    <div class="card shadow p-4">
+
+        <h2>{{ leilao.titulo }}</h2>
+
+        <img
+        src="{{ url_for('static', filename='uploads/' + (leilao.imagem or 'sem-imagem.jpg')) }}"
+        class="img-fluid rounded mb-4"
+        style="max-height:400px; object-fit:cover;">
+
+        <p>
+            {{ leilao.descricao }}
+        </p>
+
+        <h4>
+            Lance Atual: R$ {{ leilao.lance_atual }}
+        </h4>
+
+        <p>
+            Categoria:
+            <span class="badge bg-secondary">
+                {{ leilao.categoria }}
+            </span>
+        </p>
+
+        {% if leilao.encerrado %}
+
+        <div class="alert alert-danger">
+
+            🔒 Este leilão foi encerrado.
+
+        </div>
+
+        {% else %}
+
+        <div class="alert alert-success">
+
+            ✅ Leilão aberto para lances
+
+        </div>
+
+        {% endif %}
+
+        {% if vencedor %}
+
+        <div class="alert alert-warning">
+
+            🏆 Vencedor:
+            <strong>{{ vencedor.username }}</strong>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <div class="card shadow p-4 mt-4">
+
+        <h3>Histórico de Lances</h3>
+
+        {% if lances %}
+
+        <table class="table table-striped">
+
+            <thead>
+
+                <tr>
+
+                    <th>Usuário</th>
+                    <th>Valor</th>
+                    <th>Data</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for lance in lances %}
+
+                <tr>
+
+                    <td>
+                        {{ lance.usuario.username }}
+                    </td>
+
+                    <td>
+                        R$ {{ lance.valor }}
+                    </td>
+
+                    <td>
+                        {{ lance.data.strftime('%d/%m/%Y %H:%M') }}
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+        {% else %}
+
+        <div class="alert alert-info">
+
+            Nenhum lance foi realizado ainda.
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

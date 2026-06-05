@@ -117,8 +117,6 @@ class User(UserMixin, db.Model):
 )
     
 
-
-
 class Leilao(db.Model):
 
     id = db.Column(
@@ -157,22 +155,33 @@ class Leilao(db.Model):
         db.Integer,
         db.ForeignKey('user.id')
     )
-    
+
     categoria = db.Column(
-    db.String(50)
-)
+        db.String(50)
+    )
 
-encerrado = db.Column(
-    db.Boolean,
-    default=False
-)
+    encerrado = db.Column(
+        db.Boolean,
+        default=False
+    )
 
-vencedor_id = db.Column(
-    db.Integer,
-    db.ForeignKey('user.id')
-)
+    vencedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id')
+    )
 
+    # NOVOS CAMPOS
 
+    encerrado = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+    vencedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id')
+    )
+    
 class Lance(db.Model):
 
     id = db.Column(
@@ -198,9 +207,12 @@ class Lance(db.Model):
     leilao_id = db.Column(
         db.Integer,
         db.ForeignKey('leilao.id')
-    
     )
-    
+
+    usuario = db.relationship(
+        'User'
+    )
+
 # =========================
 # MODELOS NOVOS
 # =========================
@@ -242,6 +254,32 @@ def load_user(user_id):
 @app.route('/')
 @login_required
 def home():
+
+    # verifica se algum leilão venceu
+    for leilao in Leilao.query.all():
+
+        if (
+            not leilao.encerrado
+            and datetime.now() > leilao.data_fim
+        ):
+
+            leilao.encerrado = True
+
+            # procura o maior lance
+            ultimo_lance = Lance.query.filter_by(
+                leilao_id=leilao.id
+            ).order_by(
+                Lance.valor.desc()
+            ).first()
+
+            # define o vencedor
+            if ultimo_lance:
+
+                leilao.vencedor_id = (
+                    ultimo_lance.usuario_id
+                )
+
+    db.session.commit()
 
     categoria = request.args.get(
         'categoria'
@@ -394,7 +432,6 @@ def dar_lance(id):
 
     valor_texto = request.form.get('valor', '').strip()
 
-    # campo vazio
     if not valor_texto:
         flash("Digite um valor para o lance.")
         return redirect(url_for('home'))
@@ -416,6 +453,14 @@ def dar_lance(id):
         return redirect(
             url_for('home')
         )
+
+    novo_lance = Lance(
+        valor=valor,
+        usuario_id=current_user.id,
+        leilao_id=leilao.id
+    )
+
+    db.session.add(novo_lance)
 
     leilao.lance_atual = valor
 
@@ -660,6 +705,39 @@ def editar_leilao(id):
         'editar_leilao.html',
         leilao=leilao
     )
+    
+    
+# =========================
+# VER LEILÃO
+# =========================
+
+@app.route('/leilao/<int:id>')
+@login_required
+def ver_leilao(id):
+
+    leilao = Leilao.query.get_or_404(id)
+
+    lances = Lance.query.filter_by(
+        leilao_id=id
+    ).order_by(
+        Lance.valor.desc()
+    ).all()
+
+    vencedor = None
+
+    if leilao.vencedor_id:
+
+        vencedor = User.query.get(
+            leilao.vencedor_id
+        )
+
+    return render_template(
+        'leilao.html',
+        leilao=leilao,
+        lances=lances,
+        vencedor=vencedor
+    )
+    
     
 # =========================
 # DELETAR LEILÃO
