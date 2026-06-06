@@ -258,74 +258,124 @@ Desbanir
 </div>
 </td>
 </tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
 
-<div class="modal fade" id="modalBanir{{ u.id }}" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Banir usuário</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+{% for u in usuarios %}
+<div class="modal fade app-confirm-modal" id="modalBanir{{ u.id }}" tabindex="-1" aria-labelledby="modalBanirTitulo{{ u.id }}" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered app-modal-dialog">
+<div class="modal-content app-modal">
+<div class="modal-header app-modal-header app-modal-header-danger">
+<div>
+<span class="app-modal-kicker">Ação administrativa</span>
+<h5 class="modal-title" id="modalBanirTitulo{{ u.id }}">Banir usuário</h5>
 </div>
-<form action="{{ url_for('banir', id=u.id) }}" method="POST">
-<div class="modal-body">
-<p>Tem certeza que deseja banir este usuário?</p>
-<p><strong>Usuário:</strong> {{ u.username }}</p>
-<label class="form-label">Motivo do banimento</label>
-<textarea name="motivo_banimento" class="form-control" rows="4" required></textarea>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
-<div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-<button class="btn btn-danger">Confirmar banimento</button>
+<form action="{{ url_for('banir', id=u.id) }}" method="POST" class="app-modal-form" novalidate>
+<div class="modal-body app-modal-body">
+<div class="app-modal-intro">
+<div class="app-modal-icon app-modal-icon-danger"><i class="fa-solid fa-user-lock"></i></div>
+<div>
+<p class="app-modal-title-text">Tem certeza que deseja banir este usuário?</p>
+<p class="app-modal-subtitle">O acesso será bloqueado até que um administrador remova o banimento.</p>
+</div>
+</div>
+<div class="app-modal-summary">
+<span>Usuário</span>
+<strong>{{ u.nome_exibicao or u.nome_completo or u.username }}</strong>
+<small>@{{ u.username }}</small>
+</div>
+<div class="app-field-group">
+<label class="form-label" for="motivoBanimento{{ u.id }}">Motivo do banimento</label>
+<textarea name="motivo_banimento" id="motivoBanimento{{ u.id }}" class="form-control" rows="4" maxlength="500" required data-auto-focus data-char-counter="#contadorBanimento{{ u.id }}" placeholder="Descreva o motivo de forma objetiva."></textarea>
+<div class="d-flex justify-content-between gap-2 mt-2">
+<div class="invalid-feedback d-block app-required-message">Campo obrigatório.</div>
+<small class="text-muted"><span id="contadorBanimento{{ u.id }}">0</span>/500</small>
+</div>
+</div>
+</div>
+<div class="modal-footer app-modal-footer">
+<button type="button" class="btn btn-secondary app-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button class="btn btn-danger app-btn-confirm">Confirmar banimento</button>
 </div>
 </form>
 </div>
 </div>
 </div>
 
-<div class="modal fade" id="modalDesbanir{{ u.id }}" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Desbanir usuário</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade app-confirm-modal" id="modalDesbanir{{ u.id }}" tabindex="-1" aria-labelledby="modalDesbanirTitulo{{ u.id }}" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered app-modal-dialog">
+<div class="modal-content app-modal">
+<div class="modal-header app-modal-header app-modal-header-success">
+<div>
+<span class="app-modal-kicker">Confirmação</span>
+<h5 class="modal-title" id="modalDesbanirTitulo{{ u.id }}">Desbanir usuário</h5>
 </div>
-<div class="modal-body">
-Tem certeza que deseja desbanir o usuário "{{ u.username }}"?
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
-<div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<div class="modal-body app-modal-body">
+<div class="app-modal-intro">
+<div class="app-modal-icon app-modal-icon-success"><i class="fa-solid fa-user-check"></i></div>
+<div>
+<p class="app-modal-title-text">Restaurar acesso deste usuário?</p>
+<p class="app-modal-subtitle">O usuário poderá voltar a acessar a plataforma normalmente.</p>
+</div>
+</div>
+<div class="app-modal-summary">
+<span>Usuário</span>
+<strong>{{ u.nome_exibicao or u.nome_completo or u.username }}</strong>
+<small>@{{ u.username }}</small>
+</div>
+</div>
+<div class="modal-footer app-modal-footer">
+<button type="button" class="btn btn-secondary app-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
 <form action="{{ url_for('desbanir', id=u.id) }}" method="POST">
-<button class="btn btn-success">Desbanir</button>
+<button class="btn btn-success app-btn-confirm">Desbanir</button>
 </form>
 </div>
 </div>
 </div>
 </div>
 {% endfor %}
-</tbody>
-</table>
-</div>
-</div>
 {% endif %}
 
 </div>
 
-<div class="modal fade" id="modalExcluirConta" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Excluir conta</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade app-confirm-modal" id="modalExcluirConta" tabindex="-1" aria-labelledby="modalExcluirContaTitulo" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered app-modal-dialog">
+<div class="modal-content app-modal">
+<div class="modal-header app-modal-header app-modal-header-danger">
+<div>
+<span class="app-modal-kicker">Ação permanente</span>
+<h5 class="modal-title" id="modalExcluirContaTitulo">Excluir conta</h5>
 </div>
-<div class="modal-body">
-Tem certeza que deseja excluir sua conta? Esta ação é permanente e não poderá ser desfeita.
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
-<div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-<form action="{{ url_for('excluir_conta') }}" method="POST">
-<button class="btn btn-danger">Excluir conta</button>
+<form action="{{ url_for('excluir_conta') }}" method="POST" class="app-modal-form" data-confirm-text="EXCLUIR" novalidate>
+<div class="modal-body app-modal-body">
+<div class="app-modal-intro">
+<div class="app-modal-icon app-modal-icon-danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+<div>
+<p class="app-modal-title-text">Tem certeza que deseja excluir sua conta?</p>
+<p class="app-modal-subtitle">Esta ação é permanente e não poderá ser desfeita.</p>
+</div>
+</div>
+<div class="app-modal-warning">Todos os seus dados de conta serão removidos permanentemente.</div>
+<div class="app-field-group">
+<label class="form-label" for="confirmarExclusaoConta">Digite <strong>EXCLUIR</strong> para confirmar</label>
+<input type="text" id="confirmarExclusaoConta" class="form-control" autocomplete="off" required data-auto-focus data-confirm-input placeholder="EXCLUIR">
+<div class="invalid-feedback d-block app-required-message">Confirmação obrigatória.</div>
+</div>
+</div>
+<div class="modal-footer app-modal-footer">
+<button type="button" class="btn btn-secondary app-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button class="btn btn-danger app-btn-confirm" data-confirm-submit disabled>Excluir conta</button>
+</div>
 </form>
-</div>
 </div>
 </div>
 </div>

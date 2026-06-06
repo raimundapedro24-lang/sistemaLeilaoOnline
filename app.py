@@ -290,6 +290,9 @@ def garantir_schema_sqlite():
     if 'valor_final' not in colunas_leilao:
         db.session.execute(text("ALTER TABLE leilao ADD COLUMN valor_final FLOAT"))
 
+    if 'data_criacao' not in colunas_leilao:
+        db.session.execute(text("ALTER TABLE leilao ADD COLUMN data_criacao DATETIME"))
+
     db.session.execute(text("""
         CREATE TABLE IF NOT EXISTS log_acao (
             id INTEGER NOT NULL PRIMARY KEY,
@@ -444,6 +447,11 @@ class Leilao(db.Model):
     imagem = db.Column(
         db.String(200),
         default='sem-imagem.jpg'
+    )
+
+    data_criacao = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
     )
 
     data_fim = db.Column(

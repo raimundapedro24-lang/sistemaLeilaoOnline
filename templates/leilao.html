@@ -212,29 +212,6 @@ Remover
 </td>
 {% endif %}
 </tr>
-
-<div class="modal fade" id="modalRemoverLance{{ lance.id }}" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Remover lance</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-<div class="modal-body">
-<p>Tem certeza que deseja remover este lance?</p>
-<p><strong>Usuário:</strong> {{ lance.usuario.username }}</p>
-<p><strong>Valor:</strong> R$ {{ lance.valor }}</p>
-<p><strong>Data:</strong> {{ lance.data.strftime('%d/%m/%Y %H:%M') }}</p>
-</div>
-<div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-<form action="{{ url_for('remover_lance', id=lance.id) }}" method="POST">
-<button class="btn btn-danger">Remover lance</button>
-</form>
-</div>
-</div>
-</div>
-</div>
 {% endfor %}
 </tbody>
 </table>
@@ -243,6 +220,50 @@ Remover
 <div class="alert alert-info">Nenhum lance foi realizado ainda.</div>
 {% endif %}
 </div>
+
+{% if lances %}
+{% for lance in lances %}
+{% if current_user.role == 'Admin' or current_user.id == leilao.criador_id %}
+<div class="modal fade app-confirm-modal" id="modalRemoverLance{{ lance.id }}" tabindex="-1" aria-labelledby="modalRemoverLanceTitulo{{ lance.id }}" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered app-modal-dialog">
+<div class="modal-content app-modal">
+<div class="modal-header app-modal-header app-modal-header-danger">
+<div>
+<span class="app-modal-kicker">Ação administrativa</span>
+<h5 class="modal-title" id="modalRemoverLanceTitulo{{ lance.id }}">Remover lance</h5>
+</div>
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+<div class="modal-body app-modal-body">
+<div class="app-modal-intro">
+<div class="app-modal-icon app-modal-icon-danger"><i class="fa-solid fa-ban"></i></div>
+<div>
+<p class="app-modal-title-text">Remover este lance?</p>
+<p class="app-modal-subtitle">O lance será excluído do histórico e o maior lance do leilão será recalculado.</p>
+</div>
+</div>
+<div class="app-modal-summary">
+<span>Usuário</span>
+<strong>{{ lance.usuario.nome_exibicao or lance.usuario.username }}</strong>
+<small>@{{ lance.usuario.username }}</small>
+</div>
+<div class="app-modal-details">
+<div><span>Valor</span><strong>R$ {{ lance.valor }}</strong></div>
+<div><span>Data</span><strong>{{ lance.data.strftime('%d/%m/%Y %H:%M') }}</strong></div>
+</div>
+</div>
+<div class="modal-footer app-modal-footer">
+<button type="button" class="btn btn-secondary app-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<form action="{{ url_for('remover_lance', id=lance.id) }}" method="POST">
+<button class="btn btn-danger app-btn-confirm">Remover lance</button>
+</form>
+</div>
+</div>
+</div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
 
 </div>
 

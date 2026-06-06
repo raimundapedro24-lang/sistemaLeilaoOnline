@@ -367,6 +367,335 @@ height:160px;
 
 }
 
+.app-confirm-modal .app-modal-dialog{
+
+width:min(100% - 32px, 560px);
+
+max-width:560px;
+
+margin:1.75rem auto;
+
+}
+
+.app-confirm-modal .app-modal{
+
+border:0;
+
+border-radius:14px;
+
+box-shadow:0 24px 70px rgba(15,23,42,.24);
+
+overflow:hidden;
+
+max-height:none;
+
+}
+
+.app-confirm-modal .app-modal-header{
+
+align-items:flex-start;
+
+gap:16px;
+
+padding:22px 24px 18px;
+
+border-bottom:1px solid #eef2f7;
+
+background:#f8fafc;
+
+}
+
+.app-confirm-modal .app-modal-header-danger{
+
+background:#fff5f5;
+
+}
+
+.app-confirm-modal .app-modal-header-success{
+
+background:#f0fdf4;
+
+}
+
+.app-confirm-modal .app-modal-kicker{
+
+display:block;
+
+margin-bottom:4px;
+
+font-size:12px;
+
+font-weight:700;
+
+letter-spacing:.04em;
+
+text-transform:uppercase;
+
+color:#64748b;
+
+}
+
+.app-confirm-modal .modal-title{
+
+font-size:22px;
+
+font-weight:800;
+
+line-height:1.2;
+
+color:#111827;
+
+}
+
+.app-confirm-modal .app-modal-body{
+
+padding:24px;
+
+overflow:visible;
+
+max-height:none;
+
+}
+
+.app-modal-intro{
+
+display:flex;
+
+gap:16px;
+
+align-items:flex-start;
+
+}
+
+.app-modal-icon{
+
+display:grid;
+
+place-items:center;
+
+width:44px;
+
+height:44px;
+
+border-radius:12px;
+
+flex:0 0 44px;
+
+font-size:19px;
+
+}
+
+.app-modal-icon-danger{
+
+background:#fee2e2;
+
+color:#b91c1c;
+
+}
+
+.app-modal-icon-success{
+
+background:#dcfce7;
+
+color:#15803d;
+
+}
+
+.app-modal-title-text{
+
+margin:0;
+
+font-size:17px;
+
+font-weight:700;
+
+color:#111827;
+
+}
+
+.app-modal-subtitle{
+
+margin:6px 0 0;
+
+color:#64748b;
+
+line-height:1.45;
+
+}
+
+.app-modal-summary,
+.app-modal-warning,
+.app-modal-details{
+
+margin-top:18px;
+
+border-radius:10px;
+
+}
+
+.app-modal-summary{
+
+padding:14px 16px;
+
+border:1px solid #e5e7eb;
+
+background:#f8fafc;
+
+}
+
+.app-modal-summary span,
+.app-modal-details span{
+
+display:block;
+
+font-size:13px;
+
+font-weight:700;
+
+color:#64748b;
+
+}
+
+.app-modal-summary strong,
+.app-modal-details strong{
+
+display:block;
+
+margin-top:2px;
+
+color:#111827;
+
+word-break:break-word;
+
+}
+
+.app-modal-summary small{
+
+display:block;
+
+margin-top:2px;
+
+color:#64748b;
+
+}
+
+.app-modal-warning{
+
+padding:12px 14px;
+
+border:1px solid #fecaca;
+
+background:#fff7f7;
+
+color:#991b1b;
+
+font-weight:600;
+
+}
+
+.app-modal-details{
+
+display:grid;
+
+grid-template-columns:1fr 1fr;
+
+gap:12px;
+
+}
+
+.app-modal-details div{
+
+padding:12px 14px;
+
+border:1px solid #e5e7eb;
+
+border-radius:10px;
+
+background:#f8fafc;
+
+}
+
+.app-field-group{
+
+margin-top:18px;
+
+}
+
+.app-field-group textarea{
+
+min-height:120px;
+
+resize:vertical;
+
+}
+
+.app-required-message{
+
+display:none !important;
+
+margin:0;
+
+font-size:13px;
+
+}
+
+.app-modal-form.was-validated .form-control:invalid ~ .d-flex .app-required-message,
+.app-modal-form.was-validated .form-control:invalid + .app-required-message{
+
+display:block !important;
+
+}
+
+.app-confirm-modal .app-modal-footer{
+
+display:flex;
+
+justify-content:flex-end;
+
+align-items:center;
+
+gap:10px;
+
+padding:18px 24px 22px;
+
+border-top:1px solid #eef2f7;
+
+background:#fff;
+
+}
+
+.app-confirm-modal .app-modal-footer form{
+
+margin:0;
+
+}
+
+.app-confirm-modal .app-btn-secondary,
+.app-confirm-modal .app-btn-confirm{
+
+min-width:112px;
+
+border-radius:8px;
+
+font-weight:700;
+
+}
+
+.app-confirm-modal .modal-content,
+.app-confirm-modal .modal-body,
+.app-confirm-modal .modal-header,
+.app-confirm-modal .modal-footer{
+
+height:auto;
+
+}
+
+.modal-backdrop{
+
+--bs-backdrop-opacity:.48;
+
+}
+
 @media (max-width:768px){
 
 .busca{
@@ -402,6 +731,50 @@ height:300px;
 .seller-card{
 
 position:static;
+
+}
+
+.app-confirm-modal .app-modal-dialog{
+
+width:calc(100% - 20px);
+
+margin:1rem auto;
+
+}
+
+.app-confirm-modal .app-modal-header,
+.app-confirm-modal .app-modal-body,
+.app-confirm-modal .app-modal-footer{
+
+padding-left:18px;
+
+padding-right:18px;
+
+}
+
+.app-modal-intro{
+
+gap:12px;
+
+}
+
+.app-modal-details{
+
+grid-template-columns:1fr;
+
+}
+
+.app-confirm-modal .app-modal-footer{
+
+flex-wrap:wrap;
+
+}
+
+.app-confirm-modal .app-btn-secondary,
+.app-confirm-modal .app-btn-confirm,
+.app-confirm-modal .app-modal-footer form{
+
+width:100%;
 
 }
 

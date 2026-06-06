@@ -286,5 +286,77 @@ atualizarContagensRegressivas();
 setInterval(atualizarContagensRegressivas, 1000);
 </script>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.app-confirm-modal').forEach(function (modal) {
+        modal.addEventListener('shown.bs.modal', function () {
+            const campoFoco = modal.querySelector('[data-auto-focus]');
+            if (campoFoco) {
+                campoFoco.focus();
+            }
+        });
+
+        modal.addEventListener('hidden.bs.modal', function () {
+            modal.querySelectorAll('.app-modal-form').forEach(function (form) {
+                form.classList.remove('was-validated');
+                form.reset();
+            });
+
+            modal.querySelectorAll('[data-char-counter]').forEach(function (campo) {
+                const contador = modal.querySelector(campo.dataset.charCounter);
+                if (contador) {
+                    contador.textContent = '0';
+                }
+            });
+
+            modal.querySelectorAll('[data-confirm-submit]').forEach(function (botao) {
+                botao.disabled = true;
+            });
+        });
+    });
+
+    document.querySelectorAll('[data-char-counter]').forEach(function (campo) {
+        const contador = document.querySelector(campo.dataset.charCounter);
+
+        function atualizarContador() {
+            if (contador) {
+                contador.textContent = campo.value.length;
+            }
+        }
+
+        campo.addEventListener('input', atualizarContador);
+        atualizarContador();
+    });
+
+    document.querySelectorAll('[data-confirm-text]').forEach(function (form) {
+        const textoConfirmacao = form.dataset.confirmText;
+        const input = form.querySelector('[data-confirm-input]');
+        const botao = form.querySelector('[data-confirm-submit]');
+
+        if (!input || !botao) {
+            return;
+        }
+
+        function validarConfirmacao() {
+            botao.disabled = input.value.trim() !== textoConfirmacao;
+        }
+
+        input.addEventListener('input', validarConfirmacao);
+        validarConfirmacao();
+    });
+
+    document.querySelectorAll('.app-modal-form').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            form.classList.add('was-validated');
+        });
+    });
+});
+</script>
+
 </body>
 </html>

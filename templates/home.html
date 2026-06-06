@@ -2,51 +2,33 @@
 
 {% block conteudo %}
 
-<h2 class="mb-4">
-
-Leilões em destaque
-
-</h2>
+<h2 class="mb-4">Leilões em destaque</h2>
 
 <div class="row">
 
 {% for leilao in leiloes %}
 
 <div class="col-md-4">
-
 <div class="card shadow mb-4 h-100">
 
 <img
-src="{{ url_for(
-'static',
-filename='uploads/' + (leilao.imagem or 'sem-imagem.jpg')
-)}}"
-
-class="card-img-top">
+src="{{ url_for('static', filename='uploads/' + (leilao.imagem or 'sem-imagem.jpg')) }}"
+class="card-img-top"
+alt="{{ leilao.titulo }}">
 
 <div class="card-body">
 
 <span class="badge bg-success">
-
 {% if leilao.encerrado %}
 Leilão Encerrado
 {% else %}
 ABERTO PARA LANCES
 {% endif %}
-
 </span>
 
-<h5 class="mt-3">
+<h5 class="mt-3">{{ leilao.titulo }}</h5>
 
-{{leilao.titulo}}
-
-</h5>
-
-<span class="badge bg-secondary mb-2">
-
-{{leilao.categoria}}
-
-</span>
+<span class="badge bg-secondary mb-2">{{ leilao.categoria }}</span>
 
 {% if leilao.criador %}
 <div class="seller-inline my-2">
@@ -61,17 +43,9 @@ alt="Foto do vendedor">
 </div>
 {% endif %}
 
-<p>
+<p>{{ leilao.descricao }}</p>
 
-{{leilao.descricao}}
-
-</p>
-
-<h4>
-
-R$ {{leilao.lance_atual}}
-
-</h4>
+<h4>R$ {{ leilao.lance_atual }}</h4>
 
 <p class="fw-bold">
 Tempo restante:
@@ -84,92 +58,78 @@ Tempo restante:
 {% endif %}
 </p>
 
-<a
-href="/leilao/{{leilao.id}}"
-class="btn btn-info w-100 mb-2">
+<a href="/leilao/{{ leilao.id }}" class="btn btn-info w-100 mb-2">Ver Detalhes</a>
 
-Ver Detalhes
-
-</a>
-
-<form
-action="/lance/{{leilao.id}}"
-method="POST">
-
+<form action="/lance/{{ leilao.id }}" method="POST">
 {% if not leilao.encerrado and current_user.id != leilao.criador_id %}
-
 <input
 type="number"
 step="0.01"
 name="valor"
 required
-min="{{(leilao.lance_atual or leilao.preco_inicial) + 0.01}}"
+min="{{ (leilao.lance_atual or leilao.preco_inicial) + 0.01 }}"
 class="form-control mb-2"
 placeholder="Seu lance">
-
-<button
-class="btn btn-primary w-100">
-
-Dar Lance
-
-</button>
-
+<button class="btn btn-primary w-100">Dar Lance</button>
 {% endif %}
-
 </form>
 
 {% if current_user.is_authenticated %}
-
-{% if current_user.role=="Admin" or current_user.id==leilao.criador_id %}
-
+{% if current_user.role == "Admin" or current_user.id == leilao.criador_id %}
 <div class="d-flex gap-2 mt-3">
-
-<a
-href="/editar_leilao/{{leilao.id}}"
-class="btn btn-warning w-50">
-
-Editar
-
-</a>
-
+<a href="/editar_leilao/{{ leilao.id }}" class="btn btn-warning w-50">Editar</a>
 <button
 type="button"
 class="btn btn-danger w-50"
 data-bs-toggle="modal"
 data-bs-target="#modalExcluirLeilao{{ leilao.id }}">
-
 Excluir
-
 </button>
+</div>
+{% endif %}
+{% endif %}
 
 </div>
+</div>
 
-<div class="modal fade" id="modalExcluirLeilao{{ leilao.id }}" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-<div class="modal-header">
-<h5 class="modal-title">Excluir leilão</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+{% if current_user.is_authenticated %}
+{% if current_user.role == "Admin" or current_user.id == leilao.criador_id %}
+<div class="modal fade app-confirm-modal" id="modalExcluirLeilao{{ leilao.id }}" tabindex="-1" aria-labelledby="modalExcluirLeilaoTitulo{{ leilao.id }}" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered app-modal-dialog">
+<div class="modal-content app-modal">
+<div class="modal-header app-modal-header app-modal-header-danger">
+<div>
+<span class="app-modal-kicker">Ação irreversível</span>
+<h5 class="modal-title" id="modalExcluirLeilaoTitulo{{ leilao.id }}">Excluir leilão</h5>
 </div>
-<div class="modal-body">
-Tem certeza que deseja excluir o leilão "{{ leilao.titulo }}"? Esta ação é irreversível.
+<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
-<div class="modal-footer">
-<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<div class="modal-body app-modal-body">
+<div class="app-modal-intro">
+<div class="app-modal-icon app-modal-icon-danger"><i class="fa-solid fa-trash-can"></i></div>
+<div>
+<p class="app-modal-title-text">Excluir este leilão?</p>
+<p class="app-modal-subtitle">Esta ação é irreversível e também remove os lances vinculados ao item.</p>
+</div>
+</div>
+<div class="app-modal-summary">
+<span>Título do leilão</span>
+<strong>{{ leilao.titulo }}</strong>
+<small>Encerramento: {{ leilao.data_fim.strftime('%d/%m/%Y %H:%M') if leilao.data_fim else 'Sem data definida' }}</small>
+</div>
+<div class="app-modal-warning">Depois de excluído, este leilão não poderá ser recuperado.</div>
+</div>
+<div class="modal-footer app-modal-footer">
+<button type="button" class="btn btn-secondary app-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
 <form action="/deletar_leilao/{{ leilao.id }}" method="POST">
-<button class="btn btn-danger">Excluir Leilão</button>
+<button class="btn btn-danger app-btn-confirm">Excluir leilão</button>
 </form>
 </div>
 </div>
 </div>
 </div>
-
 {% endif %}
 {% endif %}
-
-</div>
-
-</div>
 
 </div>
 
