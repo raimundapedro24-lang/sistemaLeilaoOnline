@@ -72,12 +72,15 @@ type="submit">
 {% if current_user.is_authenticated %}
 
 <a
-href="/minha_conta"
-class="btn btn-warning">
+href="{{ url_for('editar_perfil') }}"
+class="nav-profile-link">
 
-<i class="fa-solid fa-user"></i>
+<img
+src="{{ url_for('static', filename='uploads/' + (current_user.foto or 'sem-imagem.png')) }}"
+alt="Foto de perfil"
+class="nav-avatar">
 
-Minha Conta
+<span>{{ current_user.nome_exibicao or current_user.nome_completo or current_user.username }}</span>
 
 </a>
 

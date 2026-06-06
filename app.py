@@ -23,6 +23,7 @@ from flask_login import (
 )
 
 from flask_migrate import Migrate
+from sqlalchemy import text
 
 from werkzeug.security import (
     generate_password_hash,
@@ -56,6 +57,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 MAX_DURACAO_LEILAO = timedelta(days=365)
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
+FOTO_PADRAO = 'sem-imagem.png'
 
 
 # =========================
@@ -158,6 +161,148 @@ def usuario_pode_ver_contatos(leilao):
         )
     )
 
+
+def nome_publico(usuario):
+    if not usuario:
+        return "Usuario"
+
+    return usuario.nome_exibicao or usuario.nome_completo or usuario.username
+
+
+def tempo_de_cadastro(usuario):
+    if not usuario or not usuario.criado_em:
+        return "data nao informada"
+
+    dias = (datetime.now() - usuario.criado_em).days
+
+    if dias <= 0:
+        return "desde hoje"
+
+    if dias == 1:
+        return "ha 1 dia"
+
+    if dias < 30:
+        return f"ha {dias} dias"
+
+    meses = dias // 30
+
+    if meses < 12:
+        return f"ha {meses} mes" if meses == 1 else f"ha {meses} meses"
+
+    anos = dias // 365
+    return f"ha {anos} ano" if anos == 1 else f"ha {anos} anos"
+
+
+def estatisticas_usuario(usuario):
+    leiloes_criados = Leilao.query.filter_by(criador_id=usuario.id).count()
+    vendas_realizadas = Leilao.query.filter_by(
+        criador_id=usuario.id,
+        encerrado=True
+    ).filter(
+        Leilao.vencedor_id.isnot(None)
+    ).count()
+    compras_realizadas = Leilao.query.filter_by(
+        vencedor_id=usuario.id,
+        encerrado=True
+    ).count()
+
+    return {
+        'leiloes_criados': leiloes_criados,
+        'vendas_realizadas': vendas_realizadas,
+        'compras_realizadas': compras_realizadas,
+        'reputacao': "Sem avaliacoes"
+    }
+
+
+def extensao_permitida(nome_arquivo):
+    return (
+        '.' in nome_arquivo
+        and nome_arquivo.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+    )
+
+
+def salvar_foto_perfil(arquivo):
+    if not arquivo or not arquivo.filename:
+        return None, None
+
+    if not extensao_permitida(arquivo.filename):
+        return None, "Formato de imagem inválido. Use JPG, JPEG, PNG ou WEBP."
+
+    nome_seguro = secure_filename(arquivo.filename)
+    extensao = nome_seguro.rsplit('.', 1)[1].lower()
+    nome_arquivo = f"user_{current_user.id}_{int(datetime.now().timestamp())}.{extensao}"
+    caminho = os.path.join(app.config['UPLOAD_FOLDER'], nome_arquivo)
+
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    arquivo.save(caminho)
+
+    return nome_arquivo, None
+
+
+def registrar_log(acao, detalhes=None, usuario_id=None):
+    log = LogAcao(
+        usuario_id=usuario_id or (current_user.id if current_user.is_authenticated else None),
+        acao=acao,
+        detalhes=detalhes
+    )
+    db.session.add(log)
+
+
+def garantir_schema_sqlite():
+    if not db.engine.url.drivername.startswith('sqlite'):
+        return
+
+    colunas_user = {
+        row[1]
+        for row in db.session.execute(text("PRAGMA table_info(user)")).fetchall()
+    }
+    colunas_leilao = {
+        row[1]
+        for row in db.session.execute(text("PRAGMA table_info(leilao)")).fetchall()
+    }
+
+    colunas_user_sql = {
+        'foto': 'VARCHAR(200)',
+        'nome_completo': 'VARCHAR(120)',
+        'telefone': 'VARCHAR(30)',
+        'email': 'VARCHAR(120)',
+        'cidade': 'VARCHAR(80)',
+        'estado': 'VARCHAR(2)',
+        'nome_exibicao': 'VARCHAR(80)',
+        'biografia': 'TEXT',
+        'criado_em': 'DATETIME',
+        'motivo_banimento': 'TEXT',
+        'data_banimento': 'DATETIME',
+        'data_desbanimento': 'DATETIME',
+        'pref_email': 'BOOLEAN DEFAULT 1',
+        'pref_novos_lances': 'BOOLEAN DEFAULT 1',
+        'pref_leiloes_encerrados': 'BOOLEAN DEFAULT 1',
+        'mostrar_cidade': 'BOOLEAN DEFAULT 1',
+        'mostrar_telefone': 'BOOLEAN DEFAULT 0',
+        'mostrar_email': 'BOOLEAN DEFAULT 0',
+        'banido': 'BOOLEAN DEFAULT 0',
+    }
+
+    for coluna, tipo in colunas_user_sql.items():
+        if coluna not in colunas_user:
+            db.session.execute(text(f"ALTER TABLE user ADD COLUMN {coluna} {tipo}"))
+
+    if 'valor_final' not in colunas_leilao:
+        db.session.execute(text("ALTER TABLE leilao ADD COLUMN valor_final FLOAT"))
+
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS log_acao (
+            id INTEGER NOT NULL PRIMARY KEY,
+            usuario_id INTEGER,
+            acao VARCHAR(100) NOT NULL,
+            detalhes TEXT,
+            data DATETIME,
+            FOREIGN KEY(usuario_id) REFERENCES user (id)
+        )
+    """))
+
+    db.session.commit()
+
 # =========================
 # MODELOS
 # =========================
@@ -166,7 +311,7 @@ class User(UserMixin, db.Model):
     
     foto = db.Column(
     db.String(200),
-    default='padrao.png'
+    default=FOTO_PADRAO
 )
 
     id = db.Column(
@@ -208,6 +353,61 @@ class User(UserMixin, db.Model):
 
     estado = db.Column(
         db.String(2)
+    )
+
+    nome_exibicao = db.Column(
+        db.String(80)
+    )
+
+    biografia = db.Column(
+        db.Text
+    )
+
+    criado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    motivo_banimento = db.Column(
+        db.Text
+    )
+
+    data_banimento = db.Column(
+        db.DateTime
+    )
+
+    data_desbanimento = db.Column(
+        db.DateTime
+    )
+
+    pref_email = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    pref_novos_lances = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    pref_leiloes_encerrados = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    mostrar_cidade = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    mostrar_telefone = db.Column(
+        db.Boolean,
+        default=False
+    )
+
+    mostrar_email = db.Column(
+        db.Boolean,
+        default=False
     )
     
     banido = db.Column(
@@ -337,6 +537,33 @@ class Favorito(db.Model):
         db.Integer,
         db.ForeignKey('leilao.id')
     )
+
+
+class LogAcao(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey('user.id')
+    )
+
+    acao = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    detalhes = db.Column(
+        db.Text
+    )
+
+    data = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
     
 # =========================
 # LOGIN
@@ -345,6 +572,20 @@ class Favorito(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+@app.before_request
+def bloquear_usuario_banido():
+    rotas_livres = {'login', 'logout', 'static', 'cadastro'}
+
+    if (
+        current_user.is_authenticated
+        and current_user.banido
+        and request.endpoint not in rotas_livres
+    ):
+        logout_user()
+        flash("Sua conta foi suspensa. Entre em contato com a administração.")
+        return redirect(url_for('login'))
 
 
 
@@ -406,7 +647,7 @@ def login():
         if user.banido:
 
             flash(
-                "Sua conta foi banida."
+                "Sua conta foi suspensa. Entre em contato com a administração."
             )
 
             return redirect(
@@ -465,13 +706,16 @@ def cadastro():
             ),
             role='Usuario',
             nome_completo=request.form.get('nome_completo'),
+            nome_exibicao=request.form.get('nome_completo'),
             telefone=request.form.get('telefone'),
             email=request.form.get('email'),
             cidade=request.form.get('cidade'),
-            estado=request.form.get('estado')
+            estado=(request.form.get('estado') or '').upper()
         )
 
         db.session.add(novo)
+        db.session.flush()
+        registrar_log("cadastro_usuario", f"Usuário {novo.username} criou conta.", novo.id)
         db.session.commit()
 
         flash("Conta criada")
@@ -792,6 +1036,8 @@ def ver_leilao(id):
     finalizar_leiloes_expirados()
 
     leilao = Leilao.query.get_or_404(id)
+    vendedor = leilao.criador
+    stats_vendedor = estatisticas_usuario(vendedor) if vendedor else None
 
     lances = Lance.query.filter_by(
         leilao_id=id
@@ -812,6 +1058,9 @@ def ver_leilao(id):
         leilao=leilao,
         lances=lances,
         vencedor=vencedor,
+        vendedor=vendedor,
+        stats_vendedor=stats_vendedor,
+        tempo_cadastro_vendedor=tempo_de_cadastro(vendedor) if vendedor else "data nao informada",
         pode_ver_contatos=usuario_pode_ver_contatos(leilao)
     )
 
@@ -847,7 +1096,45 @@ def meus_leiloes():
 # =========================
 
 @app.route(
-    '/deletar_leilao/<int:id>'
+    '/remover_lance/<int:id>',
+    methods=['POST']
+)
+@login_required
+def remover_lance(id):
+    lance = Lance.query.get_or_404(id)
+    leilao = Leilao.query.get_or_404(lance.leilao_id)
+
+    if current_user.role != 'Admin' and current_user.id != leilao.criador_id:
+        abort(403)
+
+    db.session.delete(lance)
+
+    maior_lance = Lance.query.filter(
+        Lance.leilao_id == leilao.id,
+        Lance.id != lance.id
+    ).order_by(
+        Lance.valor.desc()
+    ).first()
+
+    leilao.lance_atual = maior_lance.valor if maior_lance else leilao.preco_inicial
+
+    if leilao.encerrado:
+        leilao.vencedor_id = maior_lance.usuario_id if maior_lance else None
+        leilao.valor_final = maior_lance.valor if maior_lance else None
+
+    registrar_log(
+        "remover_lance",
+        f"Lance {id} removido do leilão {leilao.id}."
+    )
+    db.session.commit()
+
+    flash("Lance removido com sucesso.")
+    return redirect(url_for('ver_leilao', id=leilao.id))
+
+
+@app.route(
+    '/deletar_leilao/<int:id>',
+    methods=['POST']
 )
 @login_required
 def deletar_leilao(id):
@@ -860,6 +1147,10 @@ def deletar_leilao(id):
 
     Lance.query.filter_by(leilao_id=leilao.id).delete()
     Favorito.query.filter_by(leilao_id=leilao.id).delete()
+    registrar_log(
+        "deletar_leilao",
+        f"Leilão {leilao.id} - {leilao.titulo} excluído."
+    )
 
     db.session.delete(
         leilao
@@ -894,30 +1185,140 @@ def usuarios():
 
 
 # =========================
-# MINHA CONTA
+# PERFIL
 # =========================
 
 @app.route('/minha_conta')
 @login_required
 def minha_conta():
+    return redirect(url_for('editar_perfil'))
 
-    usuarios = None
 
-    # só admin vê lista
-    if current_user.role == 'Admin':
-        usuarios = User.query.all()
+@app.route('/perfil', methods=['GET', 'POST'])
+@login_required
+def editar_perfil():
+    if request.method == 'POST':
+        acao = request.form.get('acao', 'perfil')
+
+        if acao == 'senha':
+            senha_atual = request.form.get('senha_atual', '')
+            nova_senha = request.form.get('nova_senha', '')
+            confirmar_senha = request.form.get('confirmar_senha', '')
+
+            if not check_password_hash(current_user.password, senha_atual):
+                flash("Senha atual incorreta.")
+                return redirect(url_for('editar_perfil'))
+
+            if len(nova_senha) < 6:
+                flash("A nova senha deve ter pelo menos 6 caracteres.")
+                return redirect(url_for('editar_perfil'))
+
+            if nova_senha != confirmar_senha:
+                flash("A confirmacao da senha nao confere.")
+                return redirect(url_for('editar_perfil'))
+
+            current_user.password = generate_password_hash(nova_senha)
+            registrar_log("alterar_senha", "Usuario alterou a propria senha.")
+            db.session.commit()
+
+            flash("Senha alterada com sucesso.")
+            return redirect(url_for('editar_perfil'))
+
+        current_user.nome_exibicao = request.form.get('nome_exibicao')
+        current_user.nome_completo = request.form.get('nome_completo')
+        current_user.email = request.form.get('email')
+        current_user.telefone = request.form.get('telefone')
+        current_user.cidade = request.form.get('cidade')
+        current_user.estado = (request.form.get('estado') or '').upper()
+        current_user.biografia = request.form.get('biografia')
+
+        current_user.pref_email = bool(request.form.get('pref_email'))
+        current_user.pref_novos_lances = bool(request.form.get('pref_novos_lances'))
+        current_user.pref_leiloes_encerrados = bool(request.form.get('pref_leiloes_encerrados'))
+        current_user.mostrar_cidade = bool(request.form.get('mostrar_cidade'))
+        current_user.mostrar_telefone = bool(request.form.get('mostrar_telefone'))
+        current_user.mostrar_email = bool(request.form.get('mostrar_email'))
+
+        if request.form.get('remover_foto'):
+            current_user.foto = FOTO_PADRAO
+            registrar_log("remover_foto_perfil", "Usuário removeu a foto de perfil.")
+
+        foto = request.files.get('foto')
+        nome_foto, erro_foto = salvar_foto_perfil(foto)
+
+        if erro_foto:
+            flash(erro_foto)
+            return redirect(url_for('editar_perfil'))
+
+        if nome_foto:
+            current_user.foto = nome_foto
+            registrar_log("alterar_foto_perfil", "Usuário alterou a foto de perfil.")
+
+        registrar_log("editar_perfil", "Usuário atualizou o perfil.")
+        db.session.commit()
+
+        flash("Perfil atualizado com sucesso.")
+        return redirect(url_for('editar_perfil'))
+
+    usuarios = User.query.order_by(User.username.asc()).all() if current_user.role == 'Admin' else None
 
     return render_template(
-        'minha_conta.html',
+        'perfil.html',
+        stats=estatisticas_usuario(current_user),
+        tempo_cadastro=tempo_de_cadastro(current_user),
         usuarios=usuarios
     )
+
+
+@app.route('/perfil/<int:id>')
+@login_required
+def perfil_publico(id):
+    user = User.query.get_or_404(id)
+
+    return render_template(
+        'perfil_publico.html',
+        usuario=user,
+        stats=estatisticas_usuario(user),
+        tempo_cadastro=tempo_de_cadastro(user)
+    )
+
+
+@app.route('/excluir_conta', methods=['POST'])
+@login_required
+def excluir_conta():
+    usuario = current_user._get_current_object()
+    usuario_id = usuario.id
+    username = usuario.username
+
+    Lance.query.filter_by(usuario_id=usuario_id).delete()
+    Favorito.query.filter_by(usuario_id=usuario_id).delete()
+
+    leiloes = Leilao.query.filter_by(criador_id=usuario_id).all()
+    for leilao in leiloes:
+        Lance.query.filter_by(leilao_id=leilao.id).delete()
+        Favorito.query.filter_by(leilao_id=leilao.id).delete()
+        db.session.delete(leilao)
+
+    LogAcao.query.filter_by(usuario_id=usuario_id).update({'usuario_id': None})
+    db.session.add(LogAcao(
+        usuario_id=None,
+        acao="excluir_conta",
+        detalhes=f"Usuário {username} excluiu a própria conta."
+    ))
+
+    db.session.delete(usuario)
+    logout_user()
+    db.session.commit()
+
+    flash("Conta excluída com sucesso.")
+    return redirect(url_for('login'))
     
     
 # =========================
 # ADMIN
 # =========================
 
-@app.route('/promover/<int:id>')
+@app.route('/promover/<int:id>', methods=['POST'])
 @login_required
 @role_required(['Admin'])
 def promover(id):
@@ -925,26 +1326,35 @@ def promover(id):
     user = User.query.get_or_404(id)
 
     user.role='Admin'
+    registrar_log("promover_usuario", f"Usuário {user.username} promovido a Admin.")
 
     db.session.commit()
 
     flash("Usuário promovido.")
 
-    return redirect(
-        url_for(
-            'minha_conta'
-        )
-    )
+    return redirect(url_for('editar_perfil'))
 
 
-@app.route('/banir/<int:id>')
+@app.route('/banir/<int:id>', methods=['POST'])
 @login_required
 @role_required(['Admin'])
 def banir(id):
 
     user = User.query.get_or_404(id)
 
-    user.banido=True
+    if user.id == current_user.id:
+        flash("Você não pode banir a própria conta.")
+        return redirect(url_for('editar_perfil'))
+
+    user.banido = True
+    user.motivo_banimento = request.form.get('motivo_banimento')
+    user.data_banimento = datetime.now()
+    user.data_desbanimento = None
+
+    registrar_log(
+        "banir_usuario",
+        f"Usuário {user.username} banido. Motivo: {user.motivo_banimento}"
+    )
 
     db.session.commit()
 
@@ -952,7 +1362,33 @@ def banir(id):
 
     return redirect(
         url_for(
-            'minha_conta'
+            'editar_perfil'
+        )
+    )
+
+
+@app.route('/desbanir/<int:id>', methods=['POST'])
+@login_required
+@role_required(['Admin'])
+def desbanir(id):
+
+    user = User.query.get_or_404(id)
+
+    user.banido = False
+    user.data_desbanimento = datetime.now()
+
+    registrar_log(
+        "desbanir_usuario",
+        f"Usuário {user.username} desbanido."
+    )
+
+    db.session.commit()
+
+    flash("Usuário desbanido.")
+
+    return redirect(
+        url_for(
+            'editar_perfil'
         )
     )
     
@@ -965,6 +1401,7 @@ if __name__ == "__main__":
     with app.app_context():
 
         db.create_all()
+        garantir_schema_sqlite()
 
         admin = User.query.filter_by(
             username='admin'

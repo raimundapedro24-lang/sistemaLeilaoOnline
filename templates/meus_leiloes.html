@@ -5,101 +5,73 @@
 <h2 class="mb-4">Meus Leilões</h2>
 
 <div class="card shadow p-4 mb-4">
-
 <h3>Leilões em andamento</h3>
 
 {% if leiloes_abertos %}
-
 <table class="table table-striped align-middle">
-    <thead>
-        <tr>
-            <th>Título</th>
-            <th>Maior lance atual</th>
-            <th>Tempo restante</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for leilao in leiloes_abertos %}
-        <tr>
-            <td>{{ leilao.titulo }}</td>
-            <td>R$ {{ leilao.lance_atual or leilao.preco_inicial }}</td>
-            <td>
-                {% if leilao.data_fim %}
-                <span data-countdown="{{ leilao.data_fim.isoformat() }}">Carregando...</span>
-                {% else %}
-                Sem data definida
-                {% endif %}
-            </td>
-            <td>
-                <a href="/leilao/{{ leilao.id }}" class="btn btn-info btn-sm">Ver</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
+<thead>
+<tr>
+<th>Título</th>
+<th>Maior lance atual</th>
+<th>Tempo restante</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+{% for leilao in leiloes_abertos %}
+<tr>
+<td>{{ leilao.titulo }}</td>
+<td>R$ {{ leilao.lance_atual or leilao.preco_inicial }}</td>
+<td>
+{% if leilao.data_fim %}
+<span data-countdown="{{ leilao.data_fim.isoformat() }}">Carregando...</span>
 {% else %}
-
-<div class="alert alert-info">Você não possui leilões em andamento.</div>
-
+Sem data definida
 {% endif %}
-
+</td>
+<td><a href="/leilao/{{ leilao.id }}" class="btn btn-info btn-sm">Ver</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="alert alert-info">Você não possui leilões em andamento.</div>
+{% endif %}
 </div>
 
 <div class="card shadow p-4">
-
 <h3>Leilões encerrados</h3>
 
 {% if leiloes_encerrados %}
-
 <table class="table table-striped align-middle">
-    <thead>
-        <tr>
-            <th>Título</th>
-            <th>Valor final</th>
-            <th>Comprador vencedor</th>
-            <th>Telefone</th>
-            <th>E-mail</th>
-            <th>Data de encerramento</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for leilao in leiloes_encerrados %}
-        <tr>
-            <td>{{ leilao.titulo }}</td>
-            <td>
-                {% if leilao.valor_final %}
-                R$ {{ leilao.valor_final }}
-                {% else %}
-                Sem venda
-                {% endif %}
-            </td>
-            <td>
-                {% if leilao.vencedor %}
-                {{ leilao.vencedor.nome_completo or leilao.vencedor.username }}
-                {% else %}
-                Sem vencedor
-                {% endif %}
-            </td>
-            <td>{{ leilao.vencedor.telefone if leilao.vencedor else '-' }}</td>
-            <td>{{ leilao.vencedor.email if leilao.vencedor else '-' }}</td>
-            <td>{{ leilao.data_fim.strftime('%d/%m/%Y %H:%M') if leilao.data_fim else '-' }}</td>
-            <td>
-                <a href="/leilao/{{ leilao.id }}" class="btn btn-info btn-sm">Ver</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
+<thead>
+<tr>
+<th>Título</th>
+<th>Valor final</th>
+<th>Comprador vencedor</th>
+<th>Telefone</th>
+<th>E-mail</th>
+<th>Data de encerramento</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+{% for leilao in leiloes_encerrados %}
+<tr>
+<td>{{ leilao.titulo }}</td>
+<td>{{ 'R$ ' ~ leilao.valor_final if leilao.valor_final else 'Sem venda' }}</td>
+<td>{{ leilao.vencedor.nome_completo if leilao.vencedor else 'Sem vencedor' }}</td>
+<td>{{ leilao.vencedor.telefone if leilao.vencedor else '-' }}</td>
+<td>{{ leilao.vencedor.email if leilao.vencedor else '-' }}</td>
+<td>{{ leilao.data_fim.strftime('%d/%m/%Y %H:%M') if leilao.data_fim else '-' }}</td>
+<td><a href="/leilao/{{ leilao.id }}" class="btn btn-info btn-sm">Ver</a></td>
+</tr>
+{% endfor %}
+</tbody>
 </table>
-
 {% else %}
-
 <div class="alert alert-info">Você ainda não possui leilões encerrados.</div>
-
 {% endif %}
-
 </div>
 
 {% endblock %}

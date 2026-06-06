@@ -48,6 +48,19 @@ ABERTO PARA LANCES
 
 </span>
 
+{% if leilao.criador %}
+<div class="seller-inline my-2">
+<a href="{{ url_for('perfil_publico', id=leilao.criador.id) }}" class="seller-inline-link">
+<img
+src="{{ url_for('static', filename='uploads/' + (leilao.criador.foto or 'sem-imagem.png')) }}"
+class="seller-avatar-sm"
+alt="Foto do vendedor">
+<span>{{ leilao.criador.nome_exibicao or leilao.criador.nome_completo or leilao.criador.username }}</span>
+</a>
+<span class="badge bg-primary">Vendedor</span>
+</div>
+{% endif %}
+
 <p>
 
 {{leilao.descricao}}
@@ -119,14 +132,36 @@ Editar
 
 </a>
 
-<a
-href="/deletar_leilao/{{leilao.id}}"
-class="btn btn-danger w-50">
+<button
+type="button"
+class="btn btn-danger w-50"
+data-bs-toggle="modal"
+data-bs-target="#modalExcluirLeilao{{ leilao.id }}">
 
 Excluir
 
-</a>
+</button>
 
+</div>
+
+<div class="modal fade" id="modalExcluirLeilao{{ leilao.id }}" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Excluir leilão</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+Tem certeza que deseja excluir o leilão "{{ leilao.titulo }}"? Esta ação é irreversível.
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<form action="/deletar_leilao/{{ leilao.id }}" method="POST">
+<button class="btn btn-danger">Excluir Leilão</button>
+</form>
+</div>
+</div>
+</div>
 </div>
 
 {% endif %}

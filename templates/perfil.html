@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+
+{% block conteudo %}
+
+<div class="profile-shell">
+
+<div class="profile-hero shadow-sm">
+<div class="d-flex flex-column flex-md-row align-items-md-center gap-4">
+<img
+src="{{ url_for('static', filename='uploads/' + (current_user.foto or 'sem-imagem.png')) }}"
+class="profile-avatar-xl"
+alt="Foto de perfil">
+
+<div class="flex-grow-1">
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+<h2 class="mb-0">{{ current_user.nome_exibicao or current_user.nome_completo or current_user.username }}</h2>
+<span class="badge bg-primary">Perfil</span>
+{% if current_user.role == 'Admin' %}
+<span class="badge bg-danger">Admin</span>
+{% endif %}
+</div>
+
+<p class="text-muted mb-2">{{ current_user.biografia or 'Sem biografia cadastrada.' }}</p>
+
+<div class="d-flex flex-wrap gap-3 small text-muted">
+<span><i class="fa-solid fa-calendar-days me-1"></i> Cadastro em {{ current_user.criado_em.strftime('%d/%m/%Y') if current_user.criado_em else 'data não informada' }}</span>
+<span><i class="fa-solid fa-hourglass-half me-1"></i> {{ tempo_cadastro }}</span>
+{% if current_user.mostrar_cidade %}
+<span><i class="fa-solid fa-location-dot me-1"></i> {{ current_user.cidade or 'Cidade não informada' }}{% if current_user.estado %}/{{ current_user.estado }}{% endif %}</span>
+{% endif %}
+</div>
+</div>
+
+<a href="{{ url_for('perfil_publico', id=current_user.id) }}" class="btn btn-outline-primary">
+<i class="fa-solid fa-eye me-1"></i>
+Ver perfil público
+</a>
+</div>
+</div>
+
+<div class="row g-4 mt-1">
+<div class="col-md-4">
+<div class="metric-card">
+<span>Leilões criados</span>
+<strong>{{ stats.leiloes_criados }}</strong>
+</div>
+</div>
+<div class="col-md-4">
+<div class="metric-card">
+<span>Vendas realizadas</span>
+<strong>{{ stats.vendas_realizadas }}</strong>
+</div>
+</div>
+<div class="col-md-4">
+<div class="metric-card">
+<span>Compras realizadas</span>
+<strong>{{ stats.compras_realizadas }}</strong>
+</div>
+</div>
+</div>
+
+<div class="row g-4 mt-1">
+<div class="col-lg-8">
+<div class="card shadow-sm p-4">
+<h3 class="mb-3">Configurações de perfil</h3>
+
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="acao" value="perfil">
+
+<div class="row g-3">
+<div class="col-md-4">
+<label class="form-label">Foto de perfil</label>
+<img
+id="previewFoto"
+src="{{ url_for('static', filename='uploads/' + (current_user.foto or 'sem-imagem.png')) }}"
+class="profile-avatar-preview mb-3"
+alt="Prévia da foto">
+
+<input
+type="file"
+name="foto"
+id="foto"
+class="form-control"
+accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+
+<div class="form-check mt-2">
+<input class="form-check-input" type="checkbox" name="remover_foto" value="1" id="remover_foto">
+<label class="form-check-label" for="remover_foto">Remover foto atual</label>
+</div>
+</div>
+
+<div class="col-md-8">
+<label class="form-label">Nome de exibição</label>
+<input type="text" name="nome_exibicao" class="form-control mb-3" value="{{ current_user.nome_exibicao or '' }}" required>
+
+<label class="form-label">Nome completo</label>
+<input type="text" name="nome_completo" class="form-control mb-3" value="{{ current_user.nome_completo or '' }}" required>
+
+<label class="form-label">Biografia</label>
+<textarea name="biografia" class="form-control" rows="4">{{ current_user.biografia or '' }}</textarea>
+</div>
+</div>
+
+<hr>
+
+<h4>Informações de contato</h4>
+<div class="row g-3">
+<div class="col-md-6">
+<label class="form-label">E-mail</label>
+<input type="email" name="email" class="form-control" value="{{ current_user.email or '' }}">
+</div>
+<div class="col-md-6">
+<label class="form-label">Telefone</label>
+<input type="tel" name="telefone" class="form-control" value="{{ current_user.telefone or '' }}">
+</div>
+<div class="col-md-8">
+<label class="form-label">Cidade</label>
+<input type="text" name="cidade" class="form-control" value="{{ current_user.cidade or '' }}">
+</div>
+<div class="col-md-4">
+<label class="form-label">Estado</label>
+<input type="text" name="estado" class="form-control" maxlength="2" value="{{ current_user.estado or '' }}">
+</div>
+</div>
+
+<hr>
+
+<h4>Preferências da conta</h4>
+<div class="row g-3">
+<div class="col-md-6">
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="pref_email" id="pref_email" {% if current_user.pref_email %}checked{% endif %}>
+<label class="form-check-label" for="pref_email">Receber notificações por e-mail</label>
+</div>
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="pref_novos_lances" id="pref_novos_lances" {% if current_user.pref_novos_lances %}checked{% endif %}>
+<label class="form-check-label" for="pref_novos_lances">Receber alertas de novos lances</label>
+</div>
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="pref_leiloes_encerrados" id="pref_leiloes_encerrados" {% if current_user.pref_leiloes_encerrados %}checked{% endif %}>
+<label class="form-check-label" for="pref_leiloes_encerrados">Receber avisos de leilões encerrados</label>
+</div>
+</div>
+
+<div class="col-md-6">
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="mostrar_cidade" id="mostrar_cidade" {% if current_user.mostrar_cidade %}checked{% endif %}>
+<label class="form-check-label" for="mostrar_cidade">Mostrar cidade e estado no perfil público</label>
+</div>
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="mostrar_telefone" id="mostrar_telefone" {% if current_user.mostrar_telefone %}checked{% endif %}>
+<label class="form-check-label" for="mostrar_telefone">Mostrar telefone no perfil público</label>
+</div>
+<div class="form-check form-switch">
+<input class="form-check-input" type="checkbox" name="mostrar_email" id="mostrar_email" {% if current_user.mostrar_email %}checked{% endif %}>
+<label class="form-check-label" for="mostrar_email">Mostrar e-mail no perfil público</label>
+</div>
+</div>
+</div>
+
+<button class="btn btn-primary mt-4">
+<i class="fa-solid fa-floppy-disk me-1"></i>
+Salvar alterações
+</button>
+</form>
+</div>
+</div>
+
+<div class="col-lg-4">
+<div class="card shadow-sm p-4 mb-4">
+<h3>Alteração de senha</h3>
+<form method="POST">
+<input type="hidden" name="acao" value="senha">
+<label class="form-label">Senha atual</label>
+<input type="password" name="senha_atual" class="form-control mb-3" required>
+<label class="form-label">Nova senha</label>
+<input type="password" name="nova_senha" class="form-control mb-3" minlength="6" required>
+<label class="form-label">Confirmar nova senha</label>
+<input type="password" name="confirmar_senha" class="form-control mb-3" minlength="6" required>
+<button class="btn btn-outline-primary w-100">Alterar senha</button>
+</form>
+</div>
+
+<div class="card shadow-sm p-4 border-danger">
+<h3>Excluir conta</h3>
+<p class="text-muted">Esta ação remove sua conta permanentemente.</p>
+<button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirConta">
+Excluir conta
+</button>
+</div>
+</div>
+</div>
+
+{% if current_user.role == 'Admin' and usuarios %}
+<div class="card shadow-sm p-4 mt-4 border-danger">
+<h3>Painel Admin</h3>
+
+<div class="table-responsive">
+<table class="table table-striped align-middle">
+<thead>
+<tr>
+<th>ID</th>
+<th>Usuário</th>
+<th>Cargo</th>
+<th>Status</th>
+<th>Motivo</th>
+<th>Banimento</th>
+<th>Desbanimento</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody>
+{% for u in usuarios %}
+<tr>
+<td>{{ u.id }}</td>
+<td>
+<a href="{{ url_for('perfil_publico', id=u.id) }}">{{ u.username }}</a>
+<br>
+<small>{{ u.nome_exibicao or u.nome_completo or '' }}</small>
+</td>
+<td>{{ u.role }}</td>
+<td>
+{% if u.banido %}
+<span class="badge bg-danger">Banido</span>
+{% else %}
+<span class="badge bg-success">Ativo</span>
+{% endif %}
+</td>
+<td>{{ u.motivo_banimento or '-' }}</td>
+<td>{{ u.data_banimento.strftime('%d/%m/%Y %H:%M') if u.data_banimento else '-' }}</td>
+<td>{{ u.data_desbanimento.strftime('%d/%m/%Y %H:%M') if u.data_desbanimento else '-' }}</td>
+<td>
+<div class="d-flex gap-2 flex-wrap">
+{% if u.role != 'Admin' %}
+<form action="{{ url_for('promover', id=u.id) }}" method="POST">
+<button class="btn btn-warning btn-sm">Admin</button>
+</form>
+{% endif %}
+
+{% if not u.banido %}
+<button
+type="button"
+class="btn btn-danger btn-sm"
+data-bs-toggle="modal"
+data-bs-target="#modalBanir{{ u.id }}"
+{% if u.id == current_user.id %}disabled{% endif %}>
+Banir
+</button>
+{% else %}
+<button
+type="button"
+class="btn btn-success btn-sm"
+data-bs-toggle="modal"
+data-bs-target="#modalDesbanir{{ u.id }}">
+Desbanir
+</button>
+{% endif %}
+</div>
+</td>
+</tr>
+
+<div class="modal fade" id="modalBanir{{ u.id }}" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Banir usuário</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<form action="{{ url_for('banir', id=u.id) }}" method="POST">
+<div class="modal-body">
+<p>Tem certeza que deseja banir este usuário?</p>
+<p><strong>Usuário:</strong> {{ u.username }}</p>
+<label class="form-label">Motivo do banimento</label>
+<textarea name="motivo_banimento" class="form-control" rows="4" required></textarea>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<button class="btn btn-danger">Confirmar banimento</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+<div class="modal fade" id="modalDesbanir{{ u.id }}" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Desbanir usuário</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+Tem certeza que deseja desbanir o usuário "{{ u.username }}"?
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<form action="{{ url_for('desbanir', id=u.id) }}" method="POST">
+<button class="btn btn-success">Desbanir</button>
+</form>
+</div>
+</div>
+</div>
+</div>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+{% endif %}
+
+</div>
+
+<div class="modal fade" id="modalExcluirConta" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title">Excluir conta</h5>
+<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+Tem certeza que deseja excluir sua conta? Esta ação é permanente e não poderá ser desfeita.
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<form action="{{ url_for('excluir_conta') }}" method="POST">
+<button class="btn btn-danger">Excluir conta</button>
+</form>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+document.getElementById('foto').addEventListener('change', function (event) {
+    const arquivo = event.target.files[0];
+    if (!arquivo) {
+        return;
+    }
+
+    document.getElementById('previewFoto').src = URL.createObjectURL(arquivo);
+});
+</script>
+
+{% endblock %}
